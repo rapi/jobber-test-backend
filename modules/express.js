@@ -8,6 +8,7 @@ module.exports = function (app) {
 	for (let name in routes) {
 		express.use('/' + name, routes[name](app))
 	}
+
 	express.listen(port, function () {
 		console.log('Example app listening on port ' + port)
 	})

@@ -19,6 +19,10 @@ let JobSchema = new Schema({
 	provider: {
 		type: Schema.Types.ObjectId,
 		ref: 'Providers'
+	},
+	category: {
+		type: Schema.Types.ObjectId,
+		ref: 'JobCategories'
 	}
 })
 module.exports = mongoose.model('Job', JobSchema)

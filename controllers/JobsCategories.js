@@ -5,3 +5,9 @@ exports.fetch = function (data, done) {
 		done(data)
 	})
 }
+
+exports.add = function (data, done) {
+	(new JobCategories(data)).save(function (error, category) {
+		done(category)
+	})
+}

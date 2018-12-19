@@ -1,73 +1,57 @@
 var axios = require('axios')
 var cheerio = require('cheerio')
-// var fetch = require('node-fetch')
-var JobCategories = require('models/JobCategories')
-var Providers = require('models/Providers')
-var Job = require('models/Job')
-var Provider = false
+const site = 'https://rabota.md/'
 exports.fetch = function (data, done) {
-	Providers.findOne({
-		link: 'https://rabota.md'
-	}, function (err, provider) {
-		Provider = provider
-		if (err) done({
-			error: true,
-			message: 'provider is not implemented'
-		})
-		exports.fetchCategories(provider, function (categories) {
-			exports.fetchJobsFromCategories(categories, 0, {}, function () {
-				done({
-					success: true
-				})
-			})
+	exports.fetchCategories(function (categories) {
+		exports.fetchJobsFromCategories(categories, 0, function (list) {
+			done(list)
 		})
 	})
 }
-exports.fetchJobsFromCategories = function (categories, current, list, done) {
-	if (current < categories.length)
+exports.fetchJobsFromCategories = function (categories, current, done) {
+	if (current < 1)
 		exports.fetchJobsFromCategory(categories[current], function () {
-			// list[categories[current].title] = jobs
-			// done(list)
 			setTimeout(function () {
-				exports.fetchJobsFromCategories(categories, current + 1, list, done)
+				exports.fetchJobsFromCategories(categories, current + 1, done)
 			}, 1000)
 		})
-	else done()
+	else done(categories)
 }
 exports.fetchJobsFromCategory = function (category, done) {
-	axios.get('https://rabota.md' + category.link).then(function (e) {
-		let jobs = []
+	console.log('		FETCH JOBS FROM CATEGORY ' + category.title)
+	axios.get(category.link).then(function (e) {
 		const $ = cheerio.load(e.data)
 		$('.b_info10 .preview').each(function () {
 			let company_info = $(this).find('p').first().text().split('•')
-			let job = new Job({
+			category.jobs.push({
 				title: $(this).find('.vacancy').text(),
 				link: 'https://rabota.md/vacancies/' + $(this).find('.vacancy').attr('href'),
 				company: company_info[0] ? company_info[0].trim() : '',
 				location: company_info[1] ? company_info[1].trim() : '',
 				description: $(this).find('p').last().text().trim(),
 				price: $(this).find('span').last().text().trim(),
-				provider: Provider,
 			})
-			job.save().catch(function () {})
 		})
-		done(jobs)
+		console.log('[+]	FETCHED (' + category.jobs.length + ') JOBS')
+		done()
 	})
 }
-exports.fetchCategories = function (provider, done) {
-	axios.get('https://www.rabota.md/ru/vacancies')
+exports.fetchCategories = function (done) {
+	console.log('		FETCH ALL CATEGORIES')
+	axios.get(site + 'vacancies')
 		.then(e => {
 			//get all categories
 			let categories = []
 			const $ = cheerio.load(e.data)
 			$('a[href^="/vacancies/vacancyCategory.php?id="]').each(function () {
-				categories.push(new JobCategories({
+				categories.push({
 					title: $(this).text().trim(),
-					link: $(this).attr('href'),
-					providers: provider
-				}))
-				categories[categories.length - 1].save().catch(() => {})
+					link: site + $(this).attr('href'),
+					jobs: [],
+				})
 			})
+			console.log('[+]	FETCHED (' + categories.length + ') CATEGORIES')
+
 			done(categories)
 		})
 

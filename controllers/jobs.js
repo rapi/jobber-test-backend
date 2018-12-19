@@ -4,3 +4,9 @@ exports.fetch = function (data, done) {
 		done(data)
 	})
 }
+
+exports.add = function (data, done) {
+	(new Job(data)).save(function (error, job) {
+		done(job)
+	})
+}
