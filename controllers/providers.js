@@ -1,5 +1,5 @@
 var Providers = require('models/Providers')
-// var Jobs = require('controllers/jobs')
+var Jobs = require('controllers/jobs')
 var JobsCategories = require('controllers/JobsCategories')
 var async = require('async')
 exports.fetch = function (data, done) {
@@ -18,41 +18,55 @@ exports.fetch = function (data, done) {
 			error: true,
 			message: 'Can`t find provider'
 		})
-		try {
-			let provider = require(row.path)
-			provider.fetch({}, function (list) {
-				async.waterfall(list.map(function (category) {
+		let provider = require(row.path)
+		provider.fetch({}, function (error, list) {
+			async.parallelLimit(list.map(function (category, i) {
+				return function (callback) {
+					JobsCategories.fetch({
+						title: category.title
+					}, function (error, result) {
+						if (error) console.log(error)
+						if (result.length === 0) {
+							JobsCategories.add({
+								title: category.title
+							}, function (error, document) {
+								list[i].id = document.id
+								// if (error) console.log(error)
+								callback()
+							})
+						} else {
+							list[i].id = result[0].id
+							callback()
+						}
+					})
+				}
+			}),
+			10,
+			function () {
+				async.parallelLimit(list.reduce(function (jobs, category) {
+					return jobs.concat(category.jobs.map(function (job) {
+						return Object.assign(job, {
+							category: category.id
+						})
+					}))
+				}, []).map(function (job) {
 					return function (callback) {
-						JobsCategories.fetch({
-							title: category.title
-						}, function (result) {
-							if (result.length === 0) {
-								console.log({
-									title: category.title
-								})
-								JobsCategories.add({
-									title: category.title
-								}, function () {
-									callback()
-								})
-							} else callback()
+						Jobs.add(job, function () {
+							// if (error) console.log(error)
+							callback()
 						})
 					}
-				}, function () {
-					console.log('Done!')
-				}))
+				}), 10, function () {
+					done(list)
+				})
+			}
+			)
 
-				// exports.addCategories(list, 0, function (categories) {
-				// 	exports.addJobs(categories, 0, done)
-				// })
-			})
-		} catch (e) {
-			done({
-				error: true,
-				message: e.toString()
-			})
-		}
+			// exports.addCategories(list, 0, function (categories) {
+			// 	exports.addJobs(categories, 0, done)
+		})
 	})
+	// }
 }
 // exports.addJobs = function (categories, current, done) {
 // 	if (current < categories.length) {

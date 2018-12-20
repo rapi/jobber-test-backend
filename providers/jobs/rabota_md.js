@@ -4,21 +4,21 @@ const site = 'https://rabota.md/'
 exports.fetch = function (data, done) {
 	exports.fetchCategories(function (categories) {
 		exports.fetchJobsFromCategories(categories, 0, function (list) {
-			done(list)
+			done(false, list)
 		})
 	})
 }
 exports.fetchJobsFromCategories = function (categories, current, done) {
-	if (current < 1)
+	if (current < categories.length) {
+		console.log('[' + (current + 1) + '/' + categories.length + ']	FETCH JOBS FROM CATEGORY ' + categories[current].title)
 		exports.fetchJobsFromCategory(categories[current], function () {
 			setTimeout(function () {
 				exports.fetchJobsFromCategories(categories, current + 1, done)
 			}, 1000)
 		})
-	else done(categories)
+	} else done(categories)
 }
 exports.fetchJobsFromCategory = function (category, done) {
-	console.log('		FETCH JOBS FROM CATEGORY ' + category.title)
 	axios.get(category.link).then(function (e) {
 		const $ = cheerio.load(e.data)
 		$('.b_info10 .preview').each(function () {
@@ -32,7 +32,7 @@ exports.fetchJobsFromCategory = function (category, done) {
 				price: $(this).find('span').last().text().trim(),
 			})
 		})
-		console.log('[+]	FETCHED (' + category.jobs.length + ') JOBS')
+		console.log('[+]	FETCHED (' + category.jobs.length + ') ' + category.title)
 		done()
 	})
 }
@@ -51,7 +51,6 @@ exports.fetchCategories = function (done) {
 				})
 			})
 			console.log('[+]	FETCHED (' + categories.length + ') CATEGORIES')
-
 			done(categories)
 		})
 
